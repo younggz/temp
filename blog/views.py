@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 from django.db.models import Avg, Count
 from django.shortcuts import redirect, render, get_object_or_404
 from django.http import JsonResponse, HttpResponse
@@ -18,6 +19,18 @@ from io import BytesIO
 import socket
 
 
+DEMO_USERNAME = 'demo'
+DEMO_PASSWORD = 'Demo@123456'
+
+
+def _ensure_demo_user():
+    user, created = User.objects.get_or_create(username=DEMO_USERNAME)
+    if created or not user.has_usable_password():
+        user.set_password(DEMO_PASSWORD)
+        user.save()
+    return user
+
+
 def login_view(request):
     """用户登录页。"""
     next_url = request.GET.get('next') or request.POST.get('next') or '/'
@@ -25,15 +38,24 @@ def login_view(request):
         return redirect(next_url)
 
     if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
-        password = request.POST.get('password', '')
+        if request.POST.get('demo_login') == '1':
+            _ensure_demo_user()
+            username = DEMO_USERNAME
+            password = DEMO_PASSWORD
+        else:
+            username = request.POST.get('username', '').strip()
+            password = request.POST.get('password', '')
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
             return redirect(next_url)
         messages.error(request, '用户名或密码不正确')
 
-    return render(request, 'accounts/login.html', {'next': next_url})
+    return render(request, 'accounts/login.html', {
+        'next': next_url,
+        'demo_username': DEMO_USERNAME,
+        'demo_password': DEMO_PASSWORD,
+    })
 
 
 def register_view(request):
@@ -104,24 +126,28 @@ def profile_view(request):
     })
 
 
+@login_required
 def index(request):
     """首页 - 展示文章列表"""
     posts = Post.objects.all()[:10]
     return render(request, 'index.html', {'posts': posts})
 
 
+@login_required
 def post_list(request):
     """文章列表页"""
     posts = Post.objects.all()
     return render(request, 'post_list.html', {'posts': posts})
 
 
+@login_required
 def post_detail(request, pk):
     """文章详情页"""
     post = get_object_or_404(Post, pk=pk)
     return render(request, 'post_detail.html', {'post': post})
 
 
+@login_required
 def search(request):
     """搜索功能"""
     keyword = request.GET.get('keyword', '')
@@ -144,6 +170,7 @@ def _get_lan_ip():
         return '127.0.0.1'
 
 
+@login_required
 def share(request):
     """用户交付入口：展示可访问地址和二维码。"""
     host = request.get_host()
@@ -336,6 +363,7 @@ def feedback(request):
 
 # ==================== 技能适配演示相关视图 ====================
 
+@login_required
 def skill_demo(request):
     """技能适配演示首页"""
     return render(request, 'skill_demo/index.html')

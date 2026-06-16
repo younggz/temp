@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录智能助手</title>
+    <title>登录智能博客助手</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -17,7 +17,7 @@
             font-family: "Microsoft YaHei", Arial, sans-serif;
         }
         .auth-card {
-            width: min(420px, 100%);
+            width: min(460px, 100%);
             background: #ffffff;
             border: 1px solid #dbe3ef;
             border-radius: 8px;
@@ -30,9 +30,25 @@
             font-size: 26px;
         }
         .hint {
-            margin: 0 0 22px;
+            margin: 0 0 20px;
             color: #64748b;
-            line-height: 1.6;
+            line-height: 1.65;
+        }
+        .demo-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 18px;
+        }
+        .demo-box strong { color: #1f4f8f; }
+        .demo-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 8px;
+            color: #334155;
+            font-size: 14px;
         }
         label {
             display: block;
@@ -48,7 +64,7 @@
         }
         button {
             width: 100%;
-            margin-top: 18px;
+            margin-top: 16px;
             padding: 12px;
             border: none;
             border-radius: 8px;
@@ -57,6 +73,10 @@
             font-size: 16px;
             font-weight: 700;
             cursor: pointer;
+        }
+        .demo-button {
+            margin-top: 12px;
+            background: #16a34a;
         }
         .error {
             padding: 10px 12px;
@@ -76,25 +96,37 @@
 </head>
 <body>
     <main class="auth-card">
-        <h1>登录智能助手</h1>
-        <p class="hint">登录后，系统会按用户记录你的提问、意图识别结果和反馈。</p>
+        <h1>登录智能博客助手</h1>
+        <p class="hint">进入系统后，可以体验大模型意图识别、文章推荐、用户画像和反馈记录。</p>
 
         {% for message in messages %}
             <div class="error">{{ message }}</div>
         {% endfor %}
 
+        <div class="demo-box">
+            <strong>演示账号已准备好</strong>
+            <div class="demo-row"><span>账号</span><code>{{ demo_username }}</code></div>
+            <div class="demo-row"><span>密码</span><code>{{ demo_password }}</code></div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
+                <input type="hidden" name="demo_login" value="1">
+                <button class="demo-button" type="submit">一键进入演示系统</button>
+            </form>
+        </div>
+
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ next }}">
             <label for="username">用户名</label>
-            <input id="username" name="username" autocomplete="username" required>
+            <input id="username" name="username" autocomplete="username" value="{{ demo_username }}" required>
             <label for="password">密码</label>
-            <input id="password" name="password" type="password" autocomplete="current-password" required>
+            <input id="password" name="password" type="password" autocomplete="current-password" value="{{ demo_password }}" required>
             <button type="submit">登录</button>
         </form>
 
         <div class="footer">
-            还没有账号？<a href="/accounts/register/?next={{ next|urlencode }}">立即注册</a>
+            也可以 <a href="/accounts/register/?next={{ next|urlencode }}">注册新账号</a> 单独体验用户画像。
         </div>
     </main>
 </body>

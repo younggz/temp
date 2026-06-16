@@ -19,6 +19,8 @@ class FrontendPageTests(TestCase):
         rebuild_index()
 
     def test_homepage_renders_project_dashboard(self):
+        user = User.objects.create_user(username="home_user", password="StrongPass123")
+        self.client.force_login(user)
         response = self.client.get("/", HTTP_HOST="127.0.0.1")
 
         self.assertEqual(response.status_code, 200)
@@ -26,7 +28,26 @@ class FrontendPageTests(TestCase):
         self.assertContains(response, "V4")
         self.assertContains(response, "TF-IDF")
 
+    def test_homepage_redirects_anonymous_user_to_login(self):
+        response = Client().get("/", HTTP_HOST="127.0.0.1")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response["Location"])
+
+    def test_demo_login_account_is_ready(self):
+        response = self.client.post(
+            "/accounts/login/",
+            {"demo_login": "1", "next": "/"},
+            HTTP_HOST="127.0.0.1",
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/")
+        self.assertTrue(User.objects.filter(username="demo").exists())
+
     def test_skill_demo_page_renders_darwin_dashboard(self):
+        user = User.objects.create_user(username="skill_user", password="StrongPass123")
+        self.client.force_login(user)
         response = self.client.get("/skill_demo/", HTTP_HOST="127.0.0.1")
 
         self.assertEqual(response.status_code, 200)
@@ -35,6 +56,8 @@ class FrontendPageTests(TestCase):
         self.assertContains(response, "V4 Ensemble")
 
     def test_share_page_and_qr_endpoint_are_available(self):
+        user = User.objects.create_user(username="share_user", password="StrongPass123")
+        self.client.force_login(user)
         response = self.client.get("/share/", HTTP_HOST="127.0.0.1")
 
         self.assertEqual(response.status_code, 200)
