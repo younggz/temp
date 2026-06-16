@@ -3,7 +3,7 @@ services:
     name: blog-nlp-agent
     env: python
     plan: free
-    buildCommand: ./build.sh
+    buildCommand: bash build.sh
     startCommand: gunicorn django_blog.wsgi:application
     envVars:
       - key: DEBUG
