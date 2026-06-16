@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}文章列表 - 智能博客系统{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 20px; color: #333;">
+    {% if keyword %}
+        🔍 搜索结果："{{ keyword }}"
+    {% else %}
+        📝 全部文章
+    {% endif %}
+</h2>
+
+<!-- 搜索框 -->
+<div style="margin-bottom: 20px;">
+    <form action="/search/" method="get" style="display: flex; gap: 10px;">
+        <input type="text" name="keyword" value="{{ keyword }}" 
+               placeholder="搜索文章标题..." 
+               style="flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px;">
+        <button type="submit" class="btn">搜索</button>
+    </form>
+</div>
+
+{% if posts %}
+    {% for post in posts %}
+    <div class="post-card">
+        <h3>{{ post.title }}</h3>
+        <div class="meta">🕐 {{ post.created_time|date:"Y-m-d H:i" }}</div>
+        <div class="preview">{{ post.content|truncatechars:100 }}</div>
+        <a href="/post/{{ post.id }}/" class="btn" style="margin-top: 10px;">阅读全文</a>
+    </div>
+    {% endfor %}
+{% else %}
+    <p style="color: #666; text-align: center; padding: 40px;">
+        没有找到相关文章
+    </p>
+{% endif %}
+{% endblock %}

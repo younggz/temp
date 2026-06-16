@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}智能博客系统{% endblock %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: #eef2f7; min-height: 100vh; padding: 20px; color: #1f2937; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { background: #ffffff; padding: 20px 30px; border-radius: 8px; box-shadow: 0 12px 30px rgba(15,23,42,0.08); margin-bottom: 24px; border: 1px solid #dbe3ef; }
+        header h1 { color: #1f4f8f; font-size: 28px; margin-bottom: 8px; }
+        .subtitle { color: #64748b; line-height: 1.6; }
+        nav { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+        nav a { color: #1f4f8f; text-decoration: none; padding: 8px 14px; border-radius: 6px; transition: background 0.2s, color 0.2s; background: #eff6ff; font-weight: 600; }
+        nav a:hover { background: #dbeafe; color: #173a6b; }
+        .content { background: #ffffff; padding: 28px; border-radius: 8px; box-shadow: 0 12px 30px rgba(15,23,42,0.08); border: 1px solid #dbe3ef; }
+        .chat-container { margin-top: 24px; padding: 22px; background: #ffffff; border-radius: 8px; box-shadow: 0 12px 30px rgba(15,23,42,0.08); border: 1px solid #dbe3ef; }
+        .chat-box { min-height: 240px; max-height: 520px; overflow-y: auto; background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #dbe3ef; }
+        .message { margin-bottom: 15px; padding: 10px 15px; border-radius: 8px; max-width: 80%; }
+        .message.user { background: #1f4f8f; color: white; margin-left: auto; }
+        .message.bot { background: #ffffff; color: #1f2937; border: 1px solid #dbe3ef; }
+        .message-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; font-size: 12px; }
+        .meta-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; background: #e2e8f0; color: #334155; font-weight: 600; }
+        .meta-pill.ok { background: #dcfce7; color: #166534; }
+        .meta-pill.warn { background: #fef3c7; color: #92400e; }
+        .feedback-btns { margin-top: 8px; display: none; }
+        .feedback-btns button { padding: 5px 10px; margin-right: 5px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-yes { background: #4caf50; color: white; }
+        .btn-no { background: #f44336; color: white; }
+        .input-group { display: flex; gap: 10px; }
+        .input-group input { flex: 1; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.3s; }
+        .input-group input:focus { border-color: #667eea; }
+        .input-group button { padding: 12px 30px; background: #1f4f8f; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+        .input-group button:hover { background: #173a6b; }
+        .post-card { padding: 20px; margin-bottom: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #1f4f8f; transition: transform 0.2s; }
+        .post-card:hover { transform: translateX(5px); }
+        .post-card h3 { color: #333; margin-bottom: 8px; }
+        .post-card .meta { color: #666; font-size: 13px; margin-bottom: 10px; }
+        .post-card .preview { color: #555; line-height: 1.6; }
+        .btn { display: inline-block; padding: 10px 20px; background: #1f4f8f; color: white; text-decoration: none; border-radius: 6px; transition: background 0.2s; border: none; cursor: pointer; }
+        .btn:hover { background: #173a6b; }
+        .btn.secondary { background: #e2e8f0; color: #1f2937; }
+        .btn.secondary:hover { background: #cbd5e1; }
+        .project-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
+        .metric-card { background: #f8fafc; border: 1px solid #dbe3ef; border-radius: 8px; padding: 16px; min-height: 116px; }
+        .metric-card .label { color: #64748b; font-size: 13px; margin-bottom: 8px; }
+        .metric-card .value { color: #0f172a; font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+        .metric-card .note { color: #475569; font-size: 13px; line-height: 1.45; }
+        .section-title { color: #0f172a; margin-bottom: 14px; }
+        .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+        .empty-state { color: #64748b; text-align: center; padding: 28px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; }
+        /* 可信度进度条 */
+        .qa-card { background: #f8f9fa; border-radius: 8px; padding: 12px 15px; margin-bottom: 10px; border-left: 4px solid #667eea; }
+        .qa-card h4 { margin: 0 0 5px 0; font-size: 14px; color: #333; }
+        .qa-card .meta { font-size: 12px; color: #888; margin-bottom: 6px; }
+        .confidence-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+        .confidence-bar-wrap { flex: 1; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; }
+        .confidence-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+        .confidence-bar.high { background: linear-gradient(90deg, #4caf50, #81c784); }
+        .confidence-bar.medium { background: linear-gradient(90deg, #ff9800, #ffb74d); }
+        .confidence-bar.low { background: linear-gradient(90deg, #f44336, #e57373); }
+        .confidence-text { font-size: 12px; font-weight: bold; min-width: 50px; text-align: right; }
+        .confidence-text.high { color: #2e7d32; }
+        .confidence-text.medium { color: #e65100; }
+        .confidence-text.low { color: #c62828; }
+        .qa-summary { font-size: 13px; color: #334155; margin-bottom: 10px; padding: 8px 12px; background: #eff6ff; border-radius: 6px; }
+        .qa-tag { display: inline-block; padding: 2px 8px; background: #e0e0e0; border-radius: 10px; font-size: 11px; color: #555; margin-right: 4px; }
+        .qa-snippet { font-size: 13px; color: #555; line-height: 1.5; margin-top: 4px; }
+        @media (max-width: 900px) {
+            body { padding: 12px; }
+            .content, .chat-container, header { padding: 18px; }
+            .project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .message { max-width: 95%; }
+        }
+        @media (max-width: 560px) {
+            .project-grid { grid-template-columns: 1fr; }
+            .input-group { flex-direction: column; }
+            .input-group button { width: 100%; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 基于 NLP 意图识别的智能博客系统</h1>
+            <p class="subtitle">达尔文优化技能驱动的智能博客：真实测评选择意图识别算法，并为文章检索结果反馈可信度。</p>
+            <nav>
+                <a href="/">首页</a>
+                <a href="/posts/">文章列表</a>
+                <a href="/skill_demo/">达尔文优化演示</a>
+                <a href="/share/">扫码使用</a>
+                {% if request.user.is_authenticated %}
+                <a href="/profile/">我的画像</a>
+                <a href="/accounts/logout/">退出 {{ request.user.username }}</a>
+                {% else %}
+                <a href="/accounts/login/">登录</a>
+                {% endif %}
+                <a href="/admin/">后台管理</a>
+            </nav>
+        </header>
+        
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+        
+        <!-- NLP 智能聊天区域 -->
+        <div class="chat-container">
+            <h2 style="margin-bottom: 6px; color: #1f4f8f;">💬 智能助手</h2>
+            {% if request.user.is_authenticated %}
+            <p style="margin-bottom: 8px; color: #475569; font-size: 13px;">
+                当前用户：{{ request.user.username }} · <a href="/accounts/logout/" style="color:#1f4f8f;">退出登录</a>
+            </p>
+            {% endif %}
+            <p style="margin-bottom: 15px; color: #64748b;">试试“帮我找Python文章”“数据库设计”“最新文章”。系统会返回意图置信度和文章可信度。</p>
+            <div class="chat-box" id="chatBox">
+                <div class="message bot">
+                    你好！我是智能博客助手。你可以用自然语言查询文章，我会展示识别意图、算法版本和文章可信度。
+                </div>
+            </div>
+            <div class="input-group">
+                <input type="text" id="messageInput" placeholder="输入消息，如：帮我找Python文章" onkeypress="handleKeyPress(event)">
+                <button onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            addMessage(message, 'user');
+            input.value = '';
+            
+            fetch('/nlp/chat/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: 'message=' + encodeURIComponent(message)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 如果有结构化 QA 结果，渲染可信度卡片
+                    let botContainer = null;
+                    if (data.qa_result && data.qa_result.results && data.qa_result.results.length > 0) {
+                        botContainer = renderQAResults(data);
+                    } else {
+                        botContainer = addMessage(data.message, 'bot');
+                        renderIntentMeta(botContainer, data);
+                    }
+                    renderGeneralFeedback(botContainer, data);
+                    
+                    // 如果是低置信度，显示反馈按钮
+                    if (data.low_confidence && data.log_id) {
+                        const chatBox = document.getElementById('chatBox');
+                        const lastMsg = chatBox.lastElementChild;
+                        const btnsDiv = document.createElement('div');
+                        btnsDiv.className = 'feedback-btns';
+                        btnsDiv.style.display = 'block';
+                        btnsDiv.innerHTML = `
+                            <span style="font-size:12px; color:#666;">我没听懂，但猜到了意图。这对您有帮助吗？</span><br>
+                            <button class="btn-yes" onclick="handleFeedback('${data.log_id}', true, '${data.chat_log_id || ''}')">是的，猜对了</button>
+                            <button class="btn-no" onclick="handleFeedback('${data.log_id}', false, '${data.chat_log_id || ''}')">猜错了</button>
+                        `;
+                        lastMsg.appendChild(btnsDiv);
+                    }
+                } else {
+                    addMessage('抱歉，出现了错误', 'bot');
+                }
+            })
+            .catch(error => {
+                addMessage('网络错误，请稍后重试', 'bot');
+            });
+        }
+        
+        function renderIntentMeta(container, data) {
+            const confidence = typeof data.intent_confidence === 'number' ? data.intent_confidence : 0;
+            const pct = Math.round(confidence * 100);
+            const quality = pct >= 60 ? 'ok' : 'warn';
+            const algorithm = data.intent_algorithm || 'sequence';
+            const threshold = typeof data.intent_threshold === 'number' ? data.intent_threshold.toFixed(2) : '-';
+            const meta = document.createElement('div');
+            meta.className = 'message-meta';
+            meta.innerHTML = [
+                '<span class="meta-pill">意图: ' + (data.intent || '未知') + '</span>',
+                '<span class="meta-pill ' + quality + '">意图置信度: ' + pct + '%</span>',
+                '<span class="meta-pill">算法: ' + algorithm + '</span>',
+                '<span class="meta-pill">阈值: ' + threshold + '</span>'
+            ].join('');
+            container.insertBefore(meta, container.firstChild);
+        }
+
+        function renderGeneralFeedback(container, data) {
+            if (!container || !data.chat_log_id) return;
+            const feedback = document.createElement('div');
+            feedback.className = 'feedback-btns';
+            feedback.style.display = 'block';
+            feedback.innerHTML = `
+                <span style="font-size:12px; color:#666;">这次回答有帮助吗？</span><br>
+                <button class="btn-yes" onclick="handleFeedback('', true, '${data.chat_log_id}')">有帮助</button>
+                <button class="btn-no" onclick="handleFeedback('', false, '${data.chat_log_id}')">没帮助</button>
+            `;
+            container.appendChild(feedback);
+        }
+
+        function renderQAResults(data) {
+            const qa = data.qa_result;
+            const container = document.createElement('div');
+            container.className = 'message bot';
+            renderIntentMeta(container, data);
+            
+            // 查询概览
+            const summary = document.createElement('div');
+            summary.className = 'qa-summary';
+            const overallPct = (qa.overall_confidence * 100).toFixed(0);
+            summary.innerHTML = '查询「' + qa.query + '」— ' +
+                '找到 <strong>' + qa.total + '</strong> 篇相关文章 | ' +
+                '整体可信度: <strong>' + overallPct + '%</strong>';
+            container.appendChild(summary);
+            
+            // 每条结果
+            qa.results.forEach(function(r) {
+                const pct = (r.confidence * 100).toFixed(0);
+                const labelClass = r.confidence_label === '高' ? 'high' : (r.confidence_label === '中' ? 'medium' : 'low');
+                
+                const card = document.createElement('div');
+                card.className = 'qa-card';
+                card.innerHTML = [
+                    '<h4>' + r.title + '</h4>',
+                    '<div class="meta">文章 #' + r.id + (r.tags ? ' | 标签: ' + r.tags : '') + '</div>',
+                    '<div class="confidence-row">',
+                    '  <span style="font-size:12px; color:#666;">可信度</span>',
+                    '  <div class="confidence-bar-wrap">',
+                    '    <div class="confidence-bar ' + labelClass + '" style="width: ' + pct + '%;"></div>',
+                    '  </div>',
+                    '  <span class="confidence-text ' + labelClass + '">' + pct + '% (' + r.confidence_label + ')</span>',
+                    '</div>',
+                    '<div class="qa-snippet">' + r.snippet + '</div>',
+                    '<div style="margin-top:6px;"><a href="/post/' + r.id + '/" style="font-size:12px;color:#667eea;">阅读全文 →</a></div>',
+                ].join('\n');
+                container.appendChild(card);
+            });
+            
+            // 滚动到最新
+            const chatBox = document.getElementById('chatBox');
+            chatBox.appendChild(container);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return container;
+        }
+        
+        function addMessage(text, type) {
+            const chatBox = document.getElementById('chatBox');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + type;
+            messageDiv.innerHTML = text.replace(/\n/g, '<br>');
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return messageDiv;
+        }
+        
+        function handleFeedback(logId, isCorrect, chatLogId) {
+            fetch('/nlp/feedback/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: 'log_id=' + logId + '&is_correct=' + isCorrect + '&chat_log_id=' + encodeURIComponent(chatLogId || '')
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                }
+            });
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') sendMessage();
+        }
+        
+        function getCsrfToken() {
+            let cookieValue = null;
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith('csrftoken=')) {
+                    cookieValue = cookie.substring('csrftoken='.length, cookie.length);
+                    break;
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

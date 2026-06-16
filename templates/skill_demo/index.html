@@ -1,0 +1,370 @@
+{% extends 'base.html' %}
+{% block title %}NLP 意图识别达尔文优化演示{% endblock %}
+
+{% block extra_css %}
+<style>
+    .demo-hero { margin-bottom: 22px; }
+    .demo-hero h2 { color: #0f172a; margin-bottom: 8px; }
+    .demo-hero p { color: #64748b; line-height: 1.7; }
+    .demo-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 22px; }
+    .demo-summary-card { background: #f8fafc; border: 1px solid #dbe3ef; border-radius: 8px; padding: 14px; }
+    .demo-summary-card strong { display: block; color: #0f172a; font-size: 20px; margin: 6px 0; }
+    .demo-summary-card span { color: #64748b; font-size: 13px; }
+    .nav-tabs { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid #dbe3ef; margin-bottom: 18px; padding-left: 0; list-style: none; }
+    .nav-item { list-style: none; }
+    .nav-link { border: 0; background: #eff6ff; color: #1f4f8f; padding: 9px 12px; border-radius: 6px 6px 0 0; cursor: pointer; font-weight: 700; }
+    .nav-link.active { background: #1f4f8f; color: white; }
+    .tab-pane { display: none; }
+    .tab-pane.active, .tab-pane.show.active { display: block; }
+    .card { background: #ffffff; border: 1px solid #dbe3ef; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+    .card-header { background: #f8fafc; padding: 14px 16px; border-bottom: 1px solid #dbe3ef; }
+    .card-body { padding: 16px; }
+    .row { display: flex; flex-wrap: wrap; margin: 0 -8px; }
+    .col-12, .col-md-4, .col-md-6 { padding: 0 8px; width: 100%; }
+    .col-md-4 { flex: 0 0 33.333%; max-width: 33.333%; }
+    .col-md-6 { flex: 0 0 50%; max-width: 50%; }
+    .mb-0 { margin-bottom: 0; } .mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; } .mb-4 { margin-bottom: 16px; }
+    .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; }
+    .me-1 { margin-right: 4px; } .me-2 { margin-right: 8px; }
+    .d-flex { display: flex; } .justify-content-between { justify-content: space-between; } .align-items-center { align-items: center; }
+    .text-center { text-align: center; } .text-muted { color: #64748b; }
+    .py-5 { padding-top: 32px; padding-bottom: 32px; }
+    .alert { padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; border: 1px solid transparent; }
+    .alert-info { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; }
+    .alert-success { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+    .alert-warning { background: #fef3c7; border-color: #fde68a; color: #92400e; }
+    .alert-danger { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
+    .badge { display: inline-block; padding: 4px 7px; border-radius: 999px; font-size: 12px; margin-bottom: 4px; }
+    .bg-info { background: #dbeafe; color: #1e40af; } .bg-secondary { background: #e2e8f0; color: #334155; }
+    .bg-primary { background: #1f4f8f; color: white; } .bg-success { background: #16a34a; color: white; }
+    .bg-warning { background: #f59e0b; color: white; } .bg-danger { background: #dc2626; color: white; }
+    .text-white { color: white; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th, .table td { padding: 9px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+    .table-striped tbody tr:nth-child(odd) { background: #f8fafc; }
+    .table-success { background: #dcfce7 !important; }
+    .form-label { display: block; color: #334155; font-weight: 700; margin-bottom: 6px; }
+    .form-select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; }
+    .btn-sm { padding: 7px 10px; font-size: 13px; }
+    .btn-outline-info, .btn-outline-warning { background: #e2e8f0; color: #1f2937; }
+    .progress { height: 18px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+    .progress-bar { height: 100%; color: white; text-align: center; font-size: 12px; line-height: 18px; }
+    .score-bars { display: grid; gap: 12px; margin: 14px 0; }
+    .score-bar-row { display: grid; grid-template-columns: 160px 1fr 70px; gap: 10px; align-items: center; }
+    .score-bar-track { height: 16px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+    .score-bar-fill { height: 100%; background: #1f4f8f; border-radius: 999px; }
+    .score-bar-fill.best { background: #16a34a; }
+    pre { overflow-x: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+    @media (max-width: 900px) {
+        .demo-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .col-md-4, .col-md-6 { flex: 0 0 100%; max-width: 100%; }
+        .d-flex.justify-content-between { align-items: flex-start; flex-direction: column; gap: 10px; }
+    }
+    @media (max-width: 560px) {
+        .demo-summary { grid-template-columns: 1fr; }
+        .score-bar-row { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="demo-hero">
+        <h2>NLP 意图识别达尔文优化演示</h2>
+        <p>围绕 NLP 意图识别算法展示：三代算法变异、真实测评选择、最优参数遗传、文章可信度反馈和工程化落地。</p>
+    </div>
+
+    <div class="demo-summary">
+        <div class="demo-summary-card"><span>生产默认算法</span><strong>V4 Ensemble</strong><span>F1 = 0.9556</span></div>
+        <div class="demo-summary-card"><span>融合来源</span><strong>V2 + V3</strong><span>字符串相似度 + 中文分词</span></div>
+        <div class="demo-summary-card"><span>测评数据</span><strong>24 条</strong><span>覆盖 5 类意图</span></div>
+        <div class="demo-summary-card"><span>落地反馈</span><strong>可信度</strong><span>意图 + 文章相关性</span></div>
+    </div>
+
+    <!-- 导航标签 -->
+    <ul class="nav nav-tabs mb-3" id="demoTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="skills-tab" data-bs-toggle="tab" data-bs-target="#skills" type="button" role="tab">📦 优化技能</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="optimization-tab" data-bs-toggle="tab" data-bs-target="#optimization" type="button" role="tab">🧬 达尔文优化</button>
+        </li>
+    </ul>
+
+    <!-- 标签内容 -->
+    <div class="tab-content" id="demoTabContent">
+        
+        <!-- 技能库 -->
+        <div class="tab-pane fade show active" id="skills" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5>示例技能列表</h5>
+                </div>
+                <div class="card-body">
+                    <div id="skillsList" class="row">
+                        <div class="col-12 text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 达尔文优化 -->
+        <div class="tab-pane fade" id="optimization" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">🧬 达尔文优化技能 — NLP 意图识别对比测评</h5>
+                    <div>
+                        <button class="btn btn-outline-info btn-sm me-2" onclick="runOptimization('comparison')">📊 对比测评</button>
+                        <button class="btn btn-outline-warning btn-sm me-2" onclick="runOptimization('threshold_scan')">📐 阈值扫描</button>
+                        <button class="btn btn-success btn-sm" onclick="runOptimization('full_report')">📋 完整报告</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>💡 达尔文技能说明：</strong>基于自然选择进化思想，对 NLP 意图识别算法进行三代对比测评与参数优化。
+                        <ul class="mb-0 mt-2">
+                            <li><strong>V1 - Baseline</strong>：关键词规则匹配（原始版本）</li>
+                            <li><strong>V2 - SequenceMatcher</strong>：相似度匹配（第一次进化）</li>
+                            <li><strong>V3 - Jieba+Jaccard</strong>：分词+Jaccard相似度（第二次进化）</li>
+                            <li><strong>阈值扫描</strong>：寻找最优阈值参数</li>
+                        </ul>
+                    </div>
+                    <div id="optimizationResult" class="mt-3">
+                        <div class="text-center py-5 text-muted">
+                            <p>点击上方按钮运行优化技能</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面加载时获取数据
+document.addEventListener('DOMContentLoaded', function() {
+    initTabs();
+    loadSkills();
+});
+
+function initTabs() {
+    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(button => {
+        button.addEventListener('click', function() {
+            const target = this.getAttribute('data-bs-target');
+            document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('active');
+                pane.classList.remove('show');
+            });
+            this.classList.add('active');
+            const pane = document.querySelector(target);
+            if (pane) {
+                pane.classList.add('active');
+                pane.classList.add('show');
+            }
+        });
+    });
+}
+
+// 加载技能列表
+function loadSkills() {
+    fetch('/skill_demo_api/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ action: 'list_skills' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        displaySkills(data.skills);
+        populateSkillSelects(data.skills);
+    });
+}
+
+// 显示技能卡片
+function displaySkills(skills) {
+    const container = document.getElementById('skillsList');
+    container.innerHTML = skills.map(skill => `
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title">${skill.name}</h6>
+                    <p class="card-text">${skill.description}</p>
+                    <div class="mb-2">
+                        <span class="badge bg-info">${skill.category}</span>
+                        <span class="badge bg-secondary">v${skill.version}</span>
+                    </div>
+                    <small class="text-muted">
+                        <strong>展示重点：</strong><br>
+                        ${skill.tags && skill.tags.length ? skill.tags.join(' / ') : 'NLP 意图识别优化'}
+                    </small>
+                    ${skill.alternatives.length > 0 ? `
+                        <div class="mt-2">
+                            <small class="text-warning">
+                                <strong>备选方案：</strong>${skill.alternatives.join(', ')}
+                            </small>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 填充技能选择框
+function populateSkillSelects(skills) {
+    // 当前页面只展示算法优化成果，不暴露额外适配选择。
+}
+
+// 运行达尔文优化技能
+function runOptimization(type) {
+    const container = document.getElementById('optimizationResult');
+    container.innerHTML = `
+        <div class="col-12 text-center">
+            <div class="spinner-border text-success" role="status">
+                <span class="visually-hidden">运行中...</span>
+            </div>
+            <p class="mt-2 text-muted">正在运行达尔文优化技能...</p>
+        </div>
+    `;
+    
+    fetch('/skill_demo_api/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            action: 'run_optimization',
+            optimization_type: type
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        displayOptimizationResult(container, data, type);
+    })
+    .catch(error => {
+        container.innerHTML = `<div class="alert alert-danger">请求失败: ${error.message}</div>`;
+    });
+}
+
+// 显示优化结果
+function displayOptimizationResult(container, data, type) {
+    if (!data.success) {
+        container.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+        return;
+    }
+    
+    const result = data.result;
+    
+    if (type === 'comparison') {
+        const summary = result.summary;
+        let html = '<div class="card border-primary"><div class="card-header bg-primary text-white"><h6 class="mb-0">📊 三代算法对比测评结果</h6></div><div class="card-body">';
+        html += renderF1Bars(result);
+        html += `<pre class="bg-light p-3 rounded" style="white-space: pre-wrap; font-family: monospace;">${summary.comparison_table}</pre>`;
+        html += `<div class="alert alert-success mt-3"><strong>🏆 最优算法：</strong>${summary.best_algorithm} (F1=${summary.best_f1.toFixed(4)})</div>`;
+        html += '</div></div>';
+        container.innerHTML = html;
+    } else if (type === 'threshold_scan') {
+        const thresholdData = result.threshold_results;
+        let html = '<div class="card border-warning"><div class="card-header bg-warning text-white"><h6 class="mb-0">📐 阈值参数扫描结果</h6></div><div class="card-body">';
+        html += '<table class="table table-striped table-sm"><thead><tr><th>阈值</th><th>准确率</th><th>精确率</th><th>召回率</th><th>F1</th></tr></thead><tbody>';
+        thresholdData.forEach(row => {
+            const isBest = row.threshold === result.best_threshold;
+            html += `<tr class="${isBest ? 'table-success' : ''}">
+                <td><strong>${row.threshold.toFixed(2)}</strong>${isBest ? ' 🏆' : ''}</td>
+                <td>${(row.accuracy * 100).toFixed(1)}%</td>
+                <td>${(row.precision * 100).toFixed(1)}%</td>
+                <td>${(row.recall * 100).toFixed(1)}%</td>
+                <td><strong>${(row.f1 * 100).toFixed(1)}%</strong></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        html += `<div class="alert alert-success mt-3"><strong>🏆 最优阈值：</strong>${result.best_threshold.toFixed(2)} (F1=${(result.best_f1 * 100).toFixed(1)}%)</div>`;
+        html += '</div></div>';
+        container.innerHTML = html;
+    } else {
+        // full_report
+        let html = '<div class="card border-success"><div class="card-header bg-success text-white"><h6 class="mb-0">📋 完整优化报告</h6></div><div class="card-body">';
+        
+        // 对比表格
+        const summary = result.comparison.summary;
+        html += '<div class="demo-summary">';
+        html += `<div class="demo-summary-card"><span>最优算法</span><strong>${summary.best_algorithm.replace('V2.0 ', 'V2 ')}</strong><span>F1=${summary.best_f1.toFixed(4)}</span></div>`;
+        html += `<div class="demo-summary-card"><span>生产阈值</span><strong>0.32</strong><span>SequenceMatcher</span></div>`;
+        html += `<div class="demo-summary-card"><span>V3 最优阈值</span><strong>${result.threshold_scan.best_threshold.toFixed(2)}</strong><span>F1=${result.threshold_scan.best_f1.toFixed(4)}</span></div>`;
+        html += `<div class="demo-summary-card"><span>V4 集成算法</span><strong>${result.comparison.ensemble.f1.toFixed(4)}</strong><span>V2+V3 加权融合</span></div>`;
+        html += '</div>';
+        html += '<h6>📊 三代算法对比</h6>';
+        html += renderF1Bars(result.comparison);
+        html += `<pre class="bg-light p-3 rounded" style="white-space: pre-wrap; font-family: monospace;">${summary.comparison_table}</pre>`;
+        html += `<div class="alert alert-success"><strong>🏆 最优：</strong>${summary.best_algorithm} (F1=${summary.best_f1.toFixed(4)})</div>`;
+        html += renderErrorAnalysis(summary.error_analysis);
+        
+        // 阈值扫描
+        html += '<h6 class="mt-4">📐 阈值优化</h6>';
+        html += `<p><strong>最优阈值：</strong>${result.threshold_scan.best_threshold.toFixed(2)} (F1=${(result.threshold_scan.best_f1 * 100).toFixed(1)}%)</p>`;
+        
+        // 结论与推荐
+        html += `<div class="alert alert-info mt-3"><strong>💡 推荐配置：</strong>${result.recommendation}</div>`;
+        html += '</div></div>';
+        container.innerHTML = html;
+    }
+}
+
+function renderF1Bars(comparison) {
+    const rows = [
+        { name: 'V1 Baseline', value: comparison.baseline.f1 },
+        { name: 'V2 SequenceMatcher', value: comparison.sequence_matcher.f1 },
+        { name: 'V3 Jieba+Jaccard', value: comparison.jieba.f1 },
+        { name: 'V4 Darwin Ensemble', value: comparison.ensemble.f1 },
+    ];
+    const best = Math.max(...rows.map(r => r.value));
+    return `
+        <div class="score-bars">
+            ${rows.map(row => `
+                <div class="score-bar-row">
+                    <strong>${row.name}</strong>
+                    <div class="score-bar-track">
+                        <div class="score-bar-fill ${row.value === best ? 'best' : ''}" style="width:${(row.value * 100).toFixed(1)}%;"></div>
+                    </div>
+                    <span>${row.value.toFixed(4)}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderErrorAnalysis(errorAnalysis) {
+    if (!errorAnalysis) return '';
+    const errors = errorAnalysis.representative_errors || [];
+    const counts = errorAnalysis.error_counts || {};
+    let html = '<h6 class="mt-4">🧾 错误样本分析</h6>';
+    html += '<div class="alert alert-info">错误样本用于解释算法还会在哪些表达上混淆，并作为后续反馈优化的数据来源。</div>';
+    html += '<table class="table table-striped table-sm"><thead><tr><th>算法</th><th>错误数</th></tr></thead><tbody>';
+    Object.keys(counts).forEach(name => {
+        html += `<tr><td>${name}</td><td>${counts[name]}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    if (errors.length) {
+        html += '<table class="table table-striped table-sm"><thead><tr><th>输入</th><th>真实意图</th><th>预测意图</th><th>置信度</th></tr></thead><tbody>';
+        errors.forEach(err => {
+            html += `<tr><td>${err.text}</td><td>${err.expected}</td><td>${err.predicted}</td><td>${err.confidence === null ? '-' : err.confidence}</td></tr>`;
+        });
+        html += '</tbody></table>';
+    } else {
+        html += '<div class="alert alert-success">当前最优算法在测试集上没有错误样本。</div>';
+    }
+    return html;
+}
+
+</script>
+{% endblock %}

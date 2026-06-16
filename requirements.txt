@@ -1,0 +1,11 @@
+Django
+dj-database-url
+gunicorn
+jieba
+numpy
+scikit-learn
+python-docx
+Pillow
+psycopg[binary]
+qrcode
+whitenoise

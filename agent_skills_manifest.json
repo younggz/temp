@@ -1,0 +1,49 @@
+{
+  "name": "blog_nlp_agent",
+  "version": "1.0.0",
+  "description": "基于 NLP 意图识别的智能博客 Agent，支持 Web、API 和 CLI 调用。",
+  "agent_entry": {
+    "python_class": "nlp.engine.NLPEngine",
+    "web_page": "/",
+    "api_endpoint": "/nlp/chat/",
+    "cli_command": "python manage.py blogcli ask \"你的自然语言请求\""
+  },
+  "skills": [
+    {
+      "name": "query_article_qa",
+      "description": "根据自然语言查询文章，并返回文章相关性可信度。",
+      "examples": ["帮我找Python文章", "数据库怎么优化"]
+    },
+    {
+      "name": "get_latest_articles",
+      "description": "获取最近发布的文章。",
+      "examples": ["最新文章", "看看最近的文章"]
+    },
+    {
+      "name": "filter_by_tag",
+      "description": "根据标签筛选文章。",
+      "examples": ["查看Python标签下的文章", "Django标签文章"]
+    },
+    {
+      "name": "recommend_articles",
+      "description": "根据主题推荐文章。",
+      "examples": ["推荐机器学习文章", "推荐一些前端教程"]
+    },
+    {
+      "name": "explain_algorithms",
+      "description": "解释项目中的 V1/V2/V3/V4 意图识别算法。",
+      "examples": ["有其他算法吗", "V4集成算法是什么"]
+    },
+    {
+      "name": "say_hello",
+      "description": "问候和能力介绍。",
+      "examples": ["你好", "你能做什么"]
+    }
+  ],
+  "delivery_modes": [
+    "web_chat",
+    "http_api",
+    "django_cli",
+    "qr_code_share_page"
+  ]
+}

@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: blog-nlp-agent
+    env: python
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: gunicorn django_blog.wsgi:application
+    envVars:
+      - key: DEBUG
+        value: "0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com"
+      - key: LLM_ENABLED
+        value: "1"
+      - key: LLM_BASE_URL
+        value: "https://www.vivaapi.cn/v1"
+      - key: LLM_MODEL
+        value: "gpt-4o-mini"
+      - key: LLM_API_KEY
+        sync: false

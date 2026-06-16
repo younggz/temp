@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}首页 - 智能博客系统{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <div>
+        <h2 class="section-title">项目成果看板</h2>
+        <p style="color:#64748b; line-height:1.6;">
+            围绕 NLP 意图识别算法完成三代算法实现、达尔文优化测评、生产配置选择和文章可信度反馈。
+        </p>
+    </div>
+    <a href="/skill_demo/" class="btn">查看达尔文优化演示</a>
+</div>
+
+<div class="project-grid">
+    <div class="metric-card">
+        <div class="label">目标算法</div>
+        <div class="value">NLP</div>
+        <div class="note">意图识别驱动博客查询、推荐和最新文章调度。</div>
+    </div>
+    <div class="metric-card">
+        <div class="label">生产默认</div>
+        <div class="value">V4</div>
+        <div class="note">Darwin Ensemble，真实测评 F1 = 0.9556。</div>
+    </div>
+    <div class="metric-card">
+        <div class="label">融合来源</div>
+        <div class="value">V2+V3</div>
+        <div class="note">SequenceMatcher + Jieba/Jaccard 加权融合。</div>
+    </div>
+    <div class="metric-card">
+        <div class="label">落地反馈</div>
+        <div class="value">TF-IDF</div>
+        <div class="note">文章相关性可信度，高/中/低结果可视化。</div>
+    </div>
+</div>
+
+<h2 class="section-title">最新文章</h2>
+
+{% if posts %}
+    {% for post in posts %}
+    <div class="post-card">
+        <h3>{{ post.title }}</h3>
+        <div class="meta">
+            {{ post.created_time|date:"Y-m-d H:i" }}
+            {% if post.category %} | {{ post.category }}{% endif %}
+            {% if post.tags %} | {{ post.tags }}{% endif %}
+        </div>
+        <div class="preview">{{ post.content|truncatechars:100 }}</div>
+        <a href="/post/{{ post.id }}/" class="btn" style="margin-top: 10px;">阅读全文</a>
+    </div>
+    {% endfor %}
+{% else %}
+    <p class="empty-state">
+        暂无文章，请访问 <a href="/admin/">后台管理</a> 发布文章
+    </p>
+{% endif %}
+
+<div style="text-align: center; margin-top: 30px;">
+    <a href="/posts/" class="btn secondary">查看全部文章</a>
+</div>
+{% endblock %}
