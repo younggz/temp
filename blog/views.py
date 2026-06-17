@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.conf import settings
 from django.db.models import Avg, Count
 from django.shortcuts import redirect, render, get_object_or_404
 from django.http import JsonResponse, HttpResponse
@@ -17,6 +18,9 @@ from nlp.agent_capability import AgentCapabilityRegistry
 from nlp.intent_optimization import IntentOptimizationSkill
 from io import BytesIO
 import socket
+
+
+ARTICLE_DRAFT_SESSION_KEY = 'article_creation_draft'
 
 
 DEMO_USERNAME = 'demo'
@@ -174,19 +178,30 @@ def _get_lan_ip():
 def share(request):
     """用户交付入口：展示可访问地址和二维码。"""
     host = request.get_host()
-    operator_mode = host.startswith('127.0.0.1') or host.startswith('localhost')
-    if operator_mode:
+    operator_mode = (
+        host.startswith('127.0.0.1')
+        or host.startswith('localhost')
+        or request.GET.get('qr') == '1'
+    )
+    configured_site_url = getattr(settings, 'SITE_URL', '').rstrip('/')
+    if configured_site_url:
+        public_url = f'{configured_site_url}/share/'
+        api_url = f'{configured_site_url}/nlp/chat/'
+    elif operator_mode:
         port = host.split(':')[1] if ':' in host else '8000'
         public_host = f'{_get_lan_ip()}:{port}'
+        public_url = f'http://{public_host}/share/'
+        api_url = f'http://{public_host}/nlp/chat/'
     else:
-        public_host = host
-    public_url = f'http://{public_host}/share/'
+        proto = request.headers.get('x-forwarded-proto') or ('https' if host.endswith('.onrender.com') else request.scheme)
+        public_url = f'{proto}://{host}/share/'
+        api_url = f'{proto}://{host}/nlp/chat/'
     if not operator_mode and not request.user.is_authenticated:
         return redirect(f'/accounts/login/?next={request.path}')
     return render(request, 'share.html', {
         'public_url': public_url,
         'qr_url': f'/share/qr.png?url={public_url}',
-        'api_url': f'http://{public_host}/nlp/chat/',
+        'api_url': api_url,
         'operator_mode': operator_mode,
     })
 
@@ -225,6 +240,188 @@ def _build_user_profile_summary(user):
     }
 
 
+def _truncate_for_log(text, limit=500):
+    text = text or ''
+    return text[:limit]
+
+
+def _save_chat_log(request, user_input, intent, confidence, algorithm, response_text):
+    return ChatLog.objects.create(
+        user=request.user if request.user.is_authenticated else None,
+        user_input=_truncate_for_log(user_input),
+        predicted_intent=intent,
+        confidence=confidence,
+        algorithm=algorithm,
+        response_text=response_text,
+    )
+
+
+def _chat_response(request, user_input, message, intent, confidence=1.0, algorithm='skill'):
+    chat_log = _save_chat_log(
+        request=request,
+        user_input=user_input,
+        intent=intent,
+        confidence=confidence,
+        algorithm=algorithm,
+        response_text=message,
+    )
+    return {
+        'success': True,
+        'message': message,
+        'intent': intent,
+        'intent_confidence': confidence,
+        'intent_algorithm': algorithm,
+        'intent_threshold': 0,
+        'low_confidence': False,
+        'routing_source': 'skill',
+        'chat_log_id': chat_log.id,
+    }
+
+
+def _is_article_create_start(text):
+    triggers = [
+        '创建文章', '发布文章', '新增文章', '写文章', '发文章',
+        '投稿', '新建文章', '帮我发布', '我要发布',
+    ]
+    return any(trigger in text for trigger in triggers)
+
+
+def _is_skill_help_request(text):
+    triggers = ['技能列表', '所有skill', '全部skill', '全部技能', '能做什么', '你会什么']
+    return any(trigger in text for trigger in triggers)
+
+
+def _build_skill_help_message():
+    return (
+        "当前输入框可以直接调度这些 skill：\n\n"
+        "1. 文章检索：例如“帮我找 Python 文章”。\n"
+        "2. 最新文章：例如“最新文章”。\n"
+        "3. 标签筛选：例如“查看 Django 标签下的文章”。\n"
+        "4. 个性化推荐：例如“推荐机器学习入门文章”。\n"
+        "5. 算法解释：例如“意图识别算法是什么”。\n"
+        "6. 创建公开文章：发送“创建文章”，我会依次让你输入标题和内容，最后发送“发送”完成发布。\n\n"
+        "发布后的文章会写入网站文章库，所有账号都可以在首页和文章列表看到。"
+    )
+
+
+def _handle_article_creation(request, user_input):
+    text = (user_input or '').strip()
+    draft = request.session.get(ARTICLE_DRAFT_SESSION_KEY)
+
+    if text in {'取消', '退出', '停止'} and draft:
+        request.session.pop(ARTICLE_DRAFT_SESSION_KEY, None)
+        request.session.modified = True
+        return _chat_response(
+            request, user_input, '已取消本次文章创建。你可以重新发送“创建文章”开始。',
+            '创建文章', 1.0, 'create_article_skill'
+        )
+
+    if not draft and _is_article_create_start(text):
+        request.session[ARTICLE_DRAFT_SESSION_KEY] = {'step': 'title'}
+        request.session.modified = True
+        return _chat_response(
+            request,
+            user_input,
+            '好的，我来帮你发布一篇所有账号都能看到的公开文章。\n\n请先发送文章标题。',
+            '创建文章',
+            1.0,
+            'create_article_skill',
+        )
+
+    if not draft:
+        return None
+
+    step = draft.get('step')
+    if step == 'title':
+        if len(text) < 2:
+            return _chat_response(
+                request, user_input, '标题太短了，请重新发送一个更完整的文章标题。',
+                '创建文章', 0.9, 'create_article_skill'
+            )
+        draft['title'] = text[:200]
+        draft['step'] = 'content'
+        request.session[ARTICLE_DRAFT_SESSION_KEY] = draft
+        request.session.modified = True
+        return _chat_response(
+            request,
+            user_input,
+            f'标题已记录：{draft["title"]}\n\n现在请发送文章内容。内容可以直接粘贴一整段，写完后直接发出来即可。',
+            '创建文章',
+            1.0,
+            'create_article_skill',
+        )
+
+    if step == 'content':
+        if len(text) < 10:
+            return _chat_response(
+                request, user_input, '内容太短了，请发送更完整的文章正文。',
+                '创建文章', 0.9, 'create_article_skill'
+            )
+        draft['content'] = text
+        draft['step'] = 'confirm'
+        request.session[ARTICLE_DRAFT_SESSION_KEY] = draft
+        request.session.modified = True
+        return _chat_response(
+            request,
+            user_input,
+            (
+                f'文章内容已记录。\n\n'
+                f'标题：{draft["title"]}\n'
+                f'正文长度：{len(text)} 字\n\n'
+                '确认发布到网站，请发送：发送\n'
+                '如果不想发布，请发送：取消'
+            ),
+            '创建文章',
+            1.0,
+            'create_article_skill',
+        )
+
+    if step == 'confirm':
+        if text in {'发送', '发布', '确认', '提交'}:
+            post = Post.objects.create(
+                title=draft.get('title', '未命名文章'),
+                content=draft.get('content', ''),
+                tags='用户发布,智能助手',
+                category='用户发布',
+            )
+            request.session.pop(ARTICLE_DRAFT_SESSION_KEY, None)
+            request.session.modified = True
+            try:
+                from nlp.relevance import rebuild_index
+                rebuild_index()
+            except Exception:
+                pass
+            return _chat_response(
+                request,
+                user_input,
+                (
+                    f'发布成功！文章已经发布到网站，所有账号都可以看到。\n\n'
+                    f'标题：{post.title}\n'
+                    f'文章链接：/post/{post.id}/\n\n'
+                    '你可以继续让我检索文章、推荐内容，或者再次发送“创建文章”发布下一篇。'
+                ),
+                '创建文章',
+                1.0,
+                'create_article_skill',
+            )
+
+        return _chat_response(
+            request,
+            user_input,
+            '如果确认发布，请发送“发送”。如果放弃本次创建，请发送“取消”。',
+            '创建文章',
+            0.9,
+            'create_article_skill',
+        )
+
+    request.session.pop(ARTICLE_DRAFT_SESSION_KEY, None)
+    request.session.modified = True
+    return _chat_response(
+        request, user_input, '文章创建状态已重置。请重新发送“创建文章”开始。',
+        '创建文章', 0.8, 'create_article_skill'
+    )
+
+
 @csrf_exempt
 def nlp_chat(request):
     """
@@ -256,6 +453,20 @@ def nlp_chat(request):
         user_input = request.POST.get('message', '')
         
         # 使用 NLP Engine 处理（支持 QA + 可信度）
+        article_response = _handle_article_creation(request, user_input)
+        if article_response:
+            return JsonResponse(article_response)
+
+        if _is_skill_help_request(user_input):
+            return JsonResponse(_chat_response(
+                request,
+                user_input,
+                _build_skill_help_message(),
+                '技能列表',
+                1.0,
+                'skill_catalog',
+            ))
+
         engine = NLPEngine()
         result_data = engine.process(
             user_input,
@@ -282,10 +493,10 @@ def nlp_chat(request):
         if result_data.get('llm_analysis'):
             response['llm_analysis'] = result_data['llm_analysis']
 
-        chat_log = ChatLog.objects.create(
-            user=request.user if request.user.is_authenticated else None,
+        chat_log = _save_chat_log(
+            request=request,
             user_input=user_input,
-            predicted_intent=result_data['intent'],
+            intent=result_data['intent'],
             confidence=intent_confidence,
             algorithm=result_data.get('algorithm', ''),
             response_text=response_text,
@@ -315,7 +526,7 @@ def nlp_chat(request):
         if intent_confidence < 0.3:
             failed_log = FailedLog.objects.create(
                 user=request.user if request.user.is_authenticated else None,
-                user_input=user_input,
+                user_input=_truncate_for_log(user_input, 200),
                 predicted_intent=result_data['intent'],
                 confidence=intent_confidence
             )

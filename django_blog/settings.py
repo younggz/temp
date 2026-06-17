@@ -56,6 +56,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'blog.context_processors.recent_chat_logs',
             ],
         },
     },
@@ -130,6 +131,9 @@ LLM_API_KEY = os.getenv('LLM_API_KEY', '')
 LLM_BASE_URL = os.getenv('LLM_BASE_URL', 'https://www.vivaapi.cn/v1')
 LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-4o-mini')
 LLM_TIMEOUT = int(os.getenv('LLM_TIMEOUT', '8'))
+
+# Public site URL used for QR-code sharing after deployment.
+SITE_URL = os.getenv('SITE_URL', '')
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

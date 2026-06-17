@@ -173,6 +173,58 @@ class FrontendPageTests(TestCase):
         self.assertNotIn("qa_result", data)
         self.assertIn("V4", data["message"])
 
+    def test_chat_api_can_create_public_article_in_steps(self):
+        user = User.objects.create_user(username="writer", password="StrongPass123")
+        self.client.force_login(user)
+
+        first = self.client.post("/nlp/chat/", {"message": "创建文章"}, HTTP_HOST="127.0.0.1")
+        self.assertEqual(first.status_code, 200)
+        self.assertIn("标题", first.json()["message"])
+
+        second = self.client.post("/nlp/chat/", {"message": "课堂演示文章"}, HTTP_HOST="127.0.0.1")
+        self.assertEqual(second.status_code, 200)
+        self.assertIn("内容", second.json()["message"])
+
+        third = self.client.post(
+            "/nlp/chat/",
+            {"message": "这是一篇通过智能助手发布的公开文章，所有账号都应该能看到。"},
+            HTTP_HOST="127.0.0.1",
+        )
+        self.assertEqual(third.status_code, 200)
+        self.assertIn("发送", third.json()["message"])
+
+        final = self.client.post("/nlp/chat/", {"message": "发送"}, HTTP_HOST="127.0.0.1")
+        self.assertEqual(final.status_code, 200)
+        data = final.json()
+        self.assertIn("发布成功", data["message"])
+        self.assertTrue(Post.objects.filter(title="课堂演示文章").exists())
+        self.assertGreaterEqual(ChatLog.objects.filter(user=user, predicted_intent="创建文章").count(), 4)
+
+    def test_chat_api_lists_available_skills(self):
+        response = self.client.post(
+            "/nlp/chat/",
+            {"message": "全部技能"},
+            HTTP_HOST="127.0.0.1",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["intent"], "技能列表")
+        self.assertIn("创建公开文章", data["message"])
+
+    @override_settings(
+        SITE_URL="https://blog-nlp-agent.onrender.com",
+        ALLOWED_HOSTS=["testserver", "127.0.0.1", "172.20.10.2", "blog-nlp-agent.onrender.com"],
+    )
+    def test_share_qr_uses_deployed_site_url(self):
+        user = User.objects.create_user(username="qr_user", password="StrongPass123")
+        self.client.force_login(user)
+
+        response = self.client.get("/share/?qr=1", HTTP_HOST="blog-nlp-agent.onrender.com")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "https://blog-nlp-agent.onrender.com/share/")
+
     def test_skill_demo_optimization_api_returns_recommendation(self):
         response = self.client.post(
             "/skill_demo_api/",
