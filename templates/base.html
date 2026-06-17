@@ -262,10 +262,32 @@
             const chatBox = document.getElementById('chatBox');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message ' + type;
-            messageDiv.innerHTML = text.replace(/\n/g, '<br>');
+            messageDiv.innerHTML = formatMessage(text);
             chatBox.appendChild(messageDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
             return messageDiv;
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatMessage(text) {
+            return escapeHtml(text)
+                .replace(/(\/post\/\d+\/)/g, '<a href="$1" style="color:#1f4f8f;font-weight:700;">$1</a>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function hydrateStoredMessages() {
+            document.querySelectorAll('#chatBox .message').forEach(function(el) {
+                if (el.querySelector('a, .message-meta, .qa-card, .feedback-btns')) return;
+                el.innerHTML = formatMessage(el.textContent || '');
+            });
         }
         
         function handleFeedback(logId, isCorrect, chatLogId) {
@@ -301,6 +323,8 @@
             }
             return cookieValue;
         }
+
+        hydrateStoredMessages();
     </script>
     {% block extra_js %}{% endblock %}
 </body>

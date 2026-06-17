@@ -191,14 +191,19 @@ class FrontendPageTests(TestCase):
             HTTP_HOST="127.0.0.1",
         )
         self.assertEqual(third.status_code, 200)
-        self.assertIn("发送", third.json()["message"])
+        self.assertIn("标签", third.json()["message"])
+
+        fourth = self.client.post("/nlp/chat/", {"message": "课堂演示,NLP"}, HTTP_HOST="127.0.0.1")
+        self.assertEqual(fourth.status_code, 200)
+        self.assertIn("发送", fourth.json()["message"])
 
         final = self.client.post("/nlp/chat/", {"message": "发送"}, HTTP_HOST="127.0.0.1")
         self.assertEqual(final.status_code, 200)
         data = final.json()
         self.assertIn("发布成功", data["message"])
         self.assertTrue(Post.objects.filter(title="课堂演示文章").exists())
-        self.assertGreaterEqual(ChatLog.objects.filter(user=user, predicted_intent="创建文章").count(), 4)
+        self.assertEqual(Post.objects.get(title="课堂演示文章").tags, "课堂演示,NLP")
+        self.assertGreaterEqual(ChatLog.objects.filter(user=user, predicted_intent="创建文章").count(), 5)
 
     def test_chat_api_lists_available_skills(self):
         response = self.client.post(

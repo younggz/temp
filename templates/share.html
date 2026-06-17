@@ -115,15 +115,8 @@
 {% if operator_mode %}
 <div class="share-card">
     <h2 class="section-title">扫码使用智能助手</h2>
-    <p style="color:#64748b; line-height:1.7;">
-        手机和电脑连接同一个 Wi-Fi 或热点后，用手机扫描下方二维码。
-        手机打开后只会看到智能助手对话页面。
-    </p>
     <img src="{{ qr_url }}" alt="扫码打开智能助手">
     <div class="share-url">{{ public_url }}</div>
-    <p style="color:#64748b; margin-top:12px; font-size:14px;">
-        也可以把这个地址发给同一局域网内的其他设备。
-    </p>
 </div>
 {% endif %}
 {% endblock %}

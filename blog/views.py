@@ -299,7 +299,7 @@ def _build_skill_help_message():
         "3. 标签筛选：例如“查看 Django 标签下的文章”。\n"
         "4. 个性化推荐：例如“推荐机器学习入门文章”。\n"
         "5. 算法解释：例如“意图识别算法是什么”。\n"
-        "6. 创建公开文章：发送“创建文章”，我会依次让你输入标题和内容，最后发送“发送”完成发布。\n\n"
+        "6. 创建公开文章：发送“创建文章”，我会依次让你输入标题、内容和标签，最后发送“发送”完成发布。\n\n"
         "发布后的文章会写入网站文章库，所有账号都可以在首页和文章列表看到。"
     )
 
@@ -358,7 +358,7 @@ def _handle_article_creation(request, user_input):
                 '创建文章', 0.9, 'create_article_skill'
             )
         draft['content'] = text
-        draft['step'] = 'confirm'
+        draft['step'] = 'tags'
         request.session[ARTICLE_DRAFT_SESSION_KEY] = draft
         request.session.modified = True
         return _chat_response(
@@ -368,6 +368,29 @@ def _handle_article_creation(request, user_input):
                 f'文章内容已记录。\n\n'
                 f'标题：{draft["title"]}\n'
                 f'正文长度：{len(text)} 字\n\n'
+                '现在请发送文章标签，多个标签用逗号分隔。\n'
+                '例如：Python, Django, NLP\n'
+                '如果没有特别标签，可以发送：无'
+            ),
+            '创建文章',
+            1.0,
+            'create_article_skill',
+        )
+
+    if step == 'tags':
+        tags = '' if text in {'无', '没有', '跳过'} else text[:500]
+        draft['tags'] = tags or '用户发布'
+        draft['step'] = 'confirm'
+        request.session[ARTICLE_DRAFT_SESSION_KEY] = draft
+        request.session.modified = True
+        return _chat_response(
+            request,
+            user_input,
+            (
+                f'标签已记录：{draft["tags"]}\n\n'
+                f'标题：{draft["title"]}\n'
+                f'正文长度：{len(draft.get("content", ""))} 字\n'
+                f'标签：{draft["tags"]}\n\n'
                 '确认发布到网站，请发送：发送\n'
                 '如果不想发布，请发送：取消'
             ),
@@ -381,7 +404,7 @@ def _handle_article_creation(request, user_input):
             post = Post.objects.create(
                 title=draft.get('title', '未命名文章'),
                 content=draft.get('content', ''),
-                tags='用户发布,智能助手',
+                tags=draft.get('tags') or '用户发布',
                 category='用户发布',
             )
             request.session.pop(ARTICLE_DRAFT_SESSION_KEY, None)
